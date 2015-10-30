@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+    <style>
+        * { padding: 0; margin: 0;}
+        canvas {background: #eee; display: block; margin: 0 auto;}
+    </style>
+</head>
+</body>
+
+<canvas id="myCanvas" width="480" height="320"></canvas> 
+
+<script type="text/javascript" src="AudioFx.js"></script>
+<script> 
+    //Javascript Code Goes Here (i should break this out into a different file)
+
+
+/*
+Based off a tutorial found here: 
+https://developer.mozilla.org/en-US/docs/Games/Workflows/2D_Breakout_game_pure_JavaScript/Collision_detection
+*/
+
+var canvas = document.getElementById("myCanvas");
+
+//ctx variable stores the 2D rendering context
+var ctx = canvas.getContext("2d");
+var ballRadius = 10; 
+
+
+//sounds
+var bounceSound1 = new Audio('sounds/bounceSound1.mp3');
+var bounceSound2 = new Audio('sounds/bounceSound2.mp3');
+var bounceSound3 = new Audio('sounds/bounceSound3.mp3');
+var bounceSound4 = new Audio('sounds/bounceSound4.mp3');
+var bounceSound5 = new Audio('sounds/bounceSound5.mp3');
+var breakSound = new Audio('sounds/breakSound.mp3'); 
+var deathSound = new Audio('sounds/deathSound.mp3'); 
+var gameOverSound = new Audio('sounds/gameOverSound.mp3'); 
+var gameWinSound = new Audio('sounds/gameWinSound.mp3'); 
+var fireBallSound = new Audio('sounds/fireBallSound.mp3'); 
+
+
+alert("BREAKOUT. ARROW KEYS AND MOUSE MOVE. PRESS OK TO START.");
+fireBallSound.play();
+
+
+
+// these variable define the balls location (and start point)
+var x = (canvas.width - 20) - (Math.random() * 440);
+var y = canvas.height-30;
+
+
+//these change the balls position
+   
+var dx = (Math.random() < 0.5 ? -1 : 1) * 3;
+var dy = -2; 
+
+console.log(dx);
+
+
+var paddleHeight = 10;
+var paddleWidth = 75;
+var paddleX = (canvas.width-paddleWidth)/2;   //this sets paddle position
+
+var rightPressed = false;
+var leftPressed = false;
+
+var brickRowCount = 3;
+var brickColumnCount = 5;
+var brickWidth = 75;
+var brickHeight = 20;
+var brickPadding = 10;
+var brickOffsetTop = 30;
+var brickOffsetLeft = 30;
+
+var score = 0;
+var lives = 3;
+
+
+//when the key down/up event occurs, it fires the Handler functions
+document.addEventListener("keydown", keyDownHandler, false);
+document.addEventListener("keyup", keyUpHandler, false);
+//add mouse event listener
+document.addEventListener("mousemove", mouseMoveHandler, false);
+
+//creates a 2D array to hold bricks in columns (c) and rows (r)
+var bricks = [];
+for(c=0; c<brickColumnCount; c++) {
+    bricks[c] = [];
+    for(r=0; r<brickRowCount; r++) {
+         bricks[c][r] = { x: 0, y: 0, status: 1 };
+    }
+}
+
+function keyDownHandler(e) {
+    if(e.keyCode == 39) {
+        rightPressed = true;
+    }
+    else if(e.keyCode == 37){
+        leftPressed = true;
+    }
+}
+
+function keyUpHandler(e) {
+    if(e.keyCode == 39) {
+        rightPressed = false;
+    }
+    else if (e.keyCode == 37) {
+        leftPressed = false;
+    }
+}
+
+function mouseMoveHandler(e) {
+    var relativeX = e.clientX - canvas.offsetLeft;
+    if(relativeX > 0 && relativeX < canvas.width) {
+        paddleX = relativeX - paddleWidth/2;
+    }
+}
+
+//drawBall draws the ball
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(x, y, ballRadius, 0, Math.PI*2);
+    ctx.fillStyle = "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+};
+
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
+    ctx.fillStyle =  "#0095DD";
+    ctx.fill();
+    ctx.closePath();
+};
+
+//this function cycles through the brick array and sets the x and y position of each brick and draws the bricks (I don't quite understand the array syntax here--look up later)
+
+function drawBricks() {
+    for(c=0; c<brickColumnCount; c++) {
+        for(r=0; r<brickRowCount; r++) {
+            if(bricks[c][r].status == 1) {
+                var brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
+                var brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
+                bricks[c][r].x = brickX;
+                bricks[c][r].y = brickY;
+                ctx.beginPath();
+                ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                ctx.fillStyle = "#0095DD";
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+    }
+}
+
+
+function collisionDetection() {
+    for(c=0; c<brickColumnCount; c++) {
+        for(r=0; r<brickRowCount; r++) {
+            var b = bricks[c][r];
+            if(b.status == 1) {
+                if(x > b.x && x < b.x+brickWidth && y > b.y && y < b.y+brickHeight) {
+                    dy = -dy;
+                    b.status = 0;
+                    score++;
+                    breakSound.play();
+                        if(dy > 0) {
+                            dy += .3;
+                        } else {dy -= .3;
+                        }
+                        if(dx > 0) {
+                            dx += .3;
+                        } else {dx -= .3;
+                        }
+                    if(score == brickRowCount*brickColumnCount) {
+                        gameWinSound.play();
+                        alert("YOU WIN!");
+                        document.location.reload();
+                    }
+                }
+            }
+        }
+    }
+}
+
+function drawScore() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText("Score: " + score, 8, 20)
+}
+
+function drawLives() {
+    ctx.font = "16px Arial";
+    ctx.fillStyle = "#0095DD";
+    ctx.fillText("Lives: "+lives, canvas.width-65, 20);
+}
+
+
+
+//draw clears the canvas and calls drawBall and updates the x/y position with dx/dy
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawBricks();
+    drawBall();
+    drawPaddle();
+    drawScore(); 
+    drawLives();
+    collisionDetection();
+
+
+
+//detects collision with walls and reverses movement if true
+    if(x + dx > canvas.width-ballRadius || x + dx < ballRadius) {
+        dx = -dx;
+        bounceSound1.play();
+    }
+    if(y + dy < ballRadius) {
+        dy = -dy;
+        bounceSound2.play();
+    } else if(y + dy > canvas.height-ballRadius) {
+        if(x > paddleX && x < paddleX + paddleWidth) {
+            if(y = y-paddleHeight) {
+                dy = -dy;
+                bounceSound3.play();
+            }
+        }
+        else {
+           lives--;
+        if(!lives) {
+            gameOverSound.play();
+            alert("YOU LOSE.");
+            document.location.reload();
+        }
+        else {
+            deathSound.play();
+            alert("LIFE LOST");
+            fireBallSound.play();
+            //x = canvas.width/2;
+            //y = canvas.height-30;
+            x = (canvas.width - 20) - (Math.random() * 440);
+            y = canvas.height-30;
+
+            dy = -dy;
+            bounceSound4.play();
+            //paddleX = (canvas.width-paddleWidth)/2;
+        }
+    }
+}
+
+
+    if(y + dy > canvas.height-ballRadius || y + dy < ballRadius) {
+        dy = -dy;
+        bounceSound5.play();
+    }
+    
+if(rightPressed && paddleX < canvas.width-paddleWidth) {
+       paddleX += 7;
+    }
+        else if(leftPressed && paddleX > 0) {
+            paddleX -= 7;
+        }
+
+    x += dx;
+    y += dy;
+   requestAnimationFrame(draw);
+
+};
+
+   //this calls "the Game Loop" to redraw the canvas at 10FPS 
+//setInterval(draw,10);
+//instead of set interval using a different render method:
+
+draw();
+
+
+</script>
+
+</body>
+</html>
